@@ -2,33 +2,28 @@
 
 MCPクライアントのStreamlitベースのUIインターフェースです。
 
-## 必要条件
+## Prerequisites
 
 このアプリケーションを実行するには以下のパッケージが必要です：
 
+```bash
+uv venv
+source .venv/bin/activate
 ```
+
+```bash
 uv init ./
 uv add "mcp[cli]" httpx
 uv add google-search-results huggingface-hub mammoth pathvalidate pdfminer-six pillow puremagic pydub python-pptx requests serpapi "smolagents[litellm]" speechrecognition transformers youtube-transcript-api anthropic
 uv add streamlit
 ```
 
-## インストール方法
+## Usage
 
-1. 必要なパッケージをインストールしてください：
-
-```bash
-pip install streamlit anthropic python-dotenv
-```
-
-**注意**: MCPパッケージは別途インストールが必要です。
-
-## 使い方
-
-1. Streamlitアプリを起動します：
+1. Start the Streamlit app:
 
 ```bash
-streamlit run streamlit_app.py
+streamlit run ./mcp_client/streamlit_app.py 
 ```
 
 2. ブラウザが自動的に開き、アプリのインターフェースが表示されます。
@@ -37,18 +32,18 @@ streamlit run streamlit_app.py
 5. 「サーバーに接続」ボタンをクリックします。
 6. 接続が成功したら、画面下部のチャット入力欄からメッセージを送信できます。
 
-## 実行モード
+## Execution Mode
 
-このアプリケーションには2つの実行モードがあります：
+This application has two execution modes:
 
 1. **通常モード**: 標準のMCPクライアントを使用してサーバーに接続します。Unix系OSで動作します。
 2. **Windows互換モード**: Windowsでのプロセス実行の問題を回避するためのカスタム実装を使用します。実際のサーバー起動はシミュレートし、Anthropic APIを直接呼び出して応答を生成します。
 
 Windows環境で「NotImplementedError」エラーが発生する場合は、「Windows互換モード」を使用してください。
 
-## デバッグ機能
+## Debugging Features
 
-接続エラーが発生した場合は、デバッグ機能を使用して問題を診断できます：
+If a connection error occurs, you can use the debugging features to diagnose the problem:
 
 1. **ログレベル設定**：サイドバーでログレベル（DEBUG, INFO, WARNING, ERROR）を選択できます。
 2. **パス解決モード**：相対パスまたは絶対パスのどちらでサーバースクリプトを解決するか選択できます。
@@ -56,7 +51,7 @@ Windows環境で「NotImplementedError」エラーが発生する場合は、「
 4. **エラーログ履歴**：発生したエラーの詳細情報を確認できます。
 5. **環境情報**：Python環境やシステムパスなどの情報を表示します。
 
-## トラブルシューティング
+## Troubleshooting
 
 接続エラーが発生する場合、以下を確認してください：
 

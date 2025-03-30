@@ -1,5 +1,5 @@
 import argparse
-import os
+import os, sys
 import threading
 
 from dotenv import load_dotenv
@@ -8,8 +8,14 @@ from huggingface_hub import login
 load_dotenv(dotenv_path=".env", override=True)
 login(os.getenv("HF_TOKEN"))
 
-from scripts.text_inspector_tool import TextInspectorTool
-from scripts.text_web_browser import (
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(
+    os.path.dirname(current_dir)
+)  # mcp-streamlit-appディレクトリ
+sys.path.append(parent_dir)
+
+from mcp_server.deep_research.scripts.text_inspector_tool import TextInspectorTool
+from mcp_server.deep_research.scripts.text_web_browser import (
     ArchiveSearchTool,
     FinderTool,
     FindNextTool,
@@ -18,7 +24,7 @@ from scripts.text_web_browser import (
     SimpleTextBrowser,
     VisitTool,
 )
-from scripts.visual_qa import visualizer
+from mcp_server.deep_research.scripts.visual_qa import visualizer
 
 from smolagents import (
     CodeAgent,

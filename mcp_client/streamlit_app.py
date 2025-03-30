@@ -12,13 +12,15 @@ from dotenv import load_dotenv
 
 load_dotenv()  # 環境変数を.envファイルから読み込む
 
-# インポートパスの調整
+# MCPClientモジュールのインポート
 current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(current_dir)
-if parent_dir not in sys.path:
-    sys.path.append(parent_dir)
-if current_dir not in sys.path:
-    sys.path.append(current_dir)
+parent_dir = os.path.dirname(
+    os.path.dirname(current_dir)
+)  # mcp-streamlit-appディレクトリ
+sys.path.append(parent_dir)
+from mcp_client.client import MCPClient
+
+logger_name = "mcp_client_ui"
 
 # ロギング設定
 logging.basicConfig(
@@ -38,28 +40,6 @@ except ImportError:
     logger.error("MCPライブラリがインポートできません")
     HAS_MCP = False
 
-# MCPClientモジュールのインポート
-try:
-    from client import MCPClient
-
-    logger_name = "mcp_client_ui"
-except ImportError:
-    # パスをさらに調整して再試行
-    if os.path.exists(os.path.join(current_dir, "client.py")):
-        spec = importlib.util.spec_from_file_location(
-            "client", os.path.join(current_dir, "client.py")
-        )
-        client_module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(client_module)
-        MCPClient = client_module.MCPClient
-        logger_name = "mcp_client_ui_dynamic"
-    else:
-        st.error(
-            "client.pyが見つかりません。正しいディレクトリで実行しているか確認してください。"
-        )
-        st.stop()
-
-import inspect
 
 st.set_page_config(page_title="MCP Client", page_icon="🤖", layout="wide")
 
@@ -493,6 +473,11 @@ class CustomMCPClient:
 
         # サーバースクリプトのツール関数を動的にインポートして実行
         try:
+            # SimpleResponseクラスを先に定義
+            class SimpleResponse:
+                def __init__(self, content):
+                    self.content = content
+
             # サーバースクリプトのパスからモジュールをインポート
             script_path = self.server_script_path
             if not script_path.endswith(".py"):
@@ -521,10 +506,6 @@ class CustomMCPClient:
             else:
                 # 同期関数の場合
                 result = tool_function(**processed_args)
-
-            class SimpleResponse:
-                def __init__(self, content):
-                    self.content = content
 
             return SimpleResponse(result)
         except ImportError as e:

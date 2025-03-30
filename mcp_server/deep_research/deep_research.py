@@ -5,7 +5,17 @@ from dotenv import load_dotenv
 import logging
 import datetime
 
-from create_agent import create_agent
+# パスの追加
+import sys
+
+# 絶対パスの取得と追加
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(
+    os.path.dirname(current_dir)
+)  # mcp-streamlit-appディレクトリ
+sys.path.append(parent_dir)
+
+from mcp_server.deep_research.create_agent import create_agent
 
 # 環境変数を読み込む
 load_dotenv()
