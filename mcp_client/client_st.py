@@ -275,126 +275,116 @@ class CustomMCPClient:
 
         return ToolResponse(tools)
 
-    async def process_query(self, query):
-        """クエリ処理をシミュレート"""
+    async def process_query(self, query: str) -> str:
+        """クエリを処理してレスポンスを生成"""
         if not self.anthropic:
             return "Anthropicライブラリが利用できないため、応答を生成できません。"
 
-        try:
-            # ツール情報をAnthropicに渡す形式に変換
-            anthropic_tools = []
-            for tool_info in self.available_tools:
-                # 入力スキーマの生成
-                input_schema = {"type": "object", "properties": {}, "required": []}
+        # ツール情報をAnthropicに渡す形式に変換
+        anthropic_tools = []
+        for tool_info in self.available_tools:
+            # 入力スキーマの生成
+            input_schema = {"type": "object", "properties": {}, "required": []}
 
-                for param_name, param_info in tool_info.get("params", {}).items():
-                    param_type = param_info.get("type", "string")
-                    if "float" in param_type:
-                        schema_type = "number"
-                    elif "int" in param_type:
-                        schema_type = "integer"
-                    elif "bool" in param_type:
-                        schema_type = "boolean"
-                    else:
-                        schema_type = "string"
+            for param_name, param_info in tool_info.get("params", {}).items():
+                param_type = param_info.get("type", "string")
+                if "float" in param_type:
+                    schema_type = "number"
+                elif "int" in param_type:
+                    schema_type = "integer"
+                elif "bool" in param_type:
+                    schema_type = "boolean"
+                else:
+                    schema_type = "string"
 
-                    input_schema["properties"][param_name] = {"type": schema_type}
-                    input_schema["required"].append(param_name)
+                input_schema["properties"][param_name] = {"type": schema_type}
+                input_schema["required"].append(param_name)
 
-                anthropic_tool = {
+            anthropic_tools.append(
+                {
                     "name": tool_info["name"],
                     "description": tool_info["description"],
                     "input_schema": input_schema,
                 }
-                anthropic_tools.append(anthropic_tool)
-
-            logger.debug(
-                f"Anthropicに渡すツール情報: {json.dumps(anthropic_tools, indent=2)}"
             )
 
-            # Anthropic APIを直接呼び出す（ツール情報を含む）
-            response = self.anthropic.messages.create(
+        logger.debug(
+            f"Anthropicに渡すツール情報: {json.dumps(anthropic_tools, indent=2)}"
+        )
+
+        # 初回のAnthropicAPI呼び出し（ツール情報付き）
+        messages = [{"role": "user", "content": query}]
+        response = self.anthropic.messages.create(
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=1000,
+            messages=messages,
+            tools=anthropic_tools if anthropic_tools else None,
+        )
+
+        # レスポンス処理とツール呼び出し
+        final_text = []
+        tool_uses = []
+
+        for content in response.content:
+            if content.type == "text":
+                final_text.append(content.text)
+            elif content.type == "tool_use":
+                tool_name = content.name
+                tool_args = content.input
+                tool_id = content.id
+
+                # ツール呼び出し実行
+                tool_result = await self.call_tool(tool_name, tool_args)
+                tool_result_content = (
+                    tool_result.content
+                    if hasattr(tool_result, "content")
+                    else str(tool_result)
+                )
+
+                # 結果を追加
+                final_text.append(f"[ツール呼び出し: {tool_name}]")
+                final_text.append(f"結果: {tool_result_content}")
+                tool_uses.append(
+                    {
+                        "id": tool_id,
+                        "name": tool_name,
+                        "result": tool_result_content,
+                    }
+                )
+
+        # ツール結果がある場合、それを元に続きの会話を生成
+        if tool_uses:
+            # ツール結果を会話に追加
+            messages = [{"role": "user", "content": query}]
+            messages.append({"role": "assistant", "content": response.content})
+
+            user_tool_results = {"role": "user", "content": []}
+            for tool_use in tool_uses:
+                user_tool_results["content"].append(
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": tool_use["id"],
+                        "content": tool_use["result"],
+                    }
+                )
+
+            messages.append(user_tool_results)
+
+            # 続きのレスポンスを取得
+            follow_up_response = self.anthropic.messages.create(
                 model="claude-3-5-sonnet-20241022",
                 max_tokens=1000,
-                messages=[{"role": "user", "content": query}],
-                tools=anthropic_tools if anthropic_tools else None,
+                messages=messages,
             )
 
-            # レスポンス処理
-            final_text = []
-            tool_uses = []
+            if follow_up_response.content:
+                final_text.append(follow_up_response.content[0].text)
 
-            for content in response.content:
-                if content.type == "text":
-                    final_text.append(content.text)
-                elif content.type == "tool_use":
-                    tool_name = content.name
-                    tool_args = content.input
-                    tool_id = content.id
-
-                    # ツール呼び出し実行
-                    try:
-                        tool_result = await self.call_tool(tool_name, tool_args)
-                        tool_result_content = (
-                            tool_result.content
-                            if hasattr(tool_result, "content")
-                            else str(tool_result)
-                        )
-                    except Exception as e:
-                        tool_result_content = f"ツール呼び出しエラー: {str(e)}"
-
-                    # 結果を追加
-                    final_text.append(f"[ツール呼び出し: {tool_name}]")
-                    final_text.append(f"結果: {tool_result_content}")
-                    tool_uses.append(
-                        {
-                            "id": tool_id,
-                            "name": tool_name,
-                            "result": tool_result_content,
-                        }
-                    )
-
-            # ツール結果がある場合、それを元に続きの会話を生成
-            if tool_uses:
-                # ツール結果を会話に追加
-                messages = [{"role": "user", "content": query}]
-                messages.append({"role": "assistant", "content": response.content})
-
-                user_tool_results = {"role": "user", "content": []}
-                for tool_use in tool_uses:
-                    user_tool_results["content"].append(
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": tool_use["id"],
-                            "content": tool_use["result"],
-                        }
-                    )
-
-                messages.append(user_tool_results)
-
-                # 続きのレスポンスを取得
-                try:
-                    follow_up_response = self.anthropic.messages.create(
-                        model="claude-3-5-sonnet-20241022",
-                        max_tokens=1000,
-                        messages=messages,
-                    )
-
-                    if follow_up_response.content:
-                        final_text.append(follow_up_response.content[0].text)
-                except Exception as e:
-                    final_text.append(
-                        f"エラー: フォローアップ応答の取得に失敗しました: {str(e)}"
-                    )
-
-            return "\n".join(final_text)
-        except Exception as e:
-            logger.error(f"Anthropic API呼び出しエラー: {str(e)}")
-            return f"エラーが発生しました: {str(e)}"
+        return "\n".join(final_text)
 
     async def call_tool(self, tool_name, tool_args):
         """ツール呼び出しを実行する"""
-        logger.info(f"ツール呼び出し: {tool_name}")
+        logger.info(f"tool calling: {tool_name}")
 
         # 対応するツールが存在するか確認
         tool_info = None

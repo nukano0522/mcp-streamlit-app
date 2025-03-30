@@ -91,6 +91,37 @@ async def get_forecast(latitude: float, longitude: float) -> str:
     return "\n---\n".join(forecasts)
 
 
+@mcp.tool()
+async def test_response(query: str) -> str:
+    """「テストクエリ」という文字列を含む入力を受け取ったら、「テストレスポンス」という文字列を返すツール
+
+    Args:
+        query: 入力文字列
+    """
+    if "テストクエリ" in query:
+        return "テストレスポンス"
+    else:
+        return "テストクエリが含まれていません"
+
+
+@mcp.resource("echo://{message}")
+async def echo_resource(message: str) -> str:
+    """Echo a message as a resource"""
+    return f"Resource echo: {message}"
+
+
+@mcp.tool()
+async def echo_tool(message: str) -> str:
+    """Echo a message as a tool"""
+    return f"Tool echo: {message}"
+
+
+@mcp.prompt()
+async def echo_prompt(message: str) -> str:
+    """Create an echo prompt"""
+    return f"Please process this message: {message}"
+
+
 if __name__ == "__main__":
     # Initialize and run the server
     mcp.run(transport="stdio")

@@ -68,9 +68,6 @@ with st.sidebar:
         ],
     )
 
-    # パス解決モードを選択
-    path_mode = st.radio("パス解決モード", options=["相対パス", "絶対パス"], index=0)
-
     # 実行モードの選択
     execution_mode = st.radio(
         "実行モード",
@@ -90,22 +87,6 @@ with st.sidebar:
             st.session_state.chat_history = []
             st.session_state.available_tools = []
             st.experimental_rerun()
-
-
-# パス解決関数
-def resolve_path(input_path, mode="相対パス"):
-    """パスを解決する関数"""
-    if not input_path:
-        return None
-
-    if mode == "絶対パス" and not os.path.isabs(input_path):
-        return os.path.abspath(input_path)
-    elif mode == "相対パス" and os.path.isabs(input_path):
-        try:
-            return os.path.relpath(input_path, os.getcwd())
-        except ValueError:
-            return input_path
-    return input_path
 
 
 # サーバーへの接続処理
@@ -180,14 +161,15 @@ if st.session_state.connected:
                 st.info(f"使用ツール: {', '.join(tool_usage_info)}")
 
                 # 表示用にレスポンスからツール呼び出し情報を整形
+                # ツール呼び出しの前後に改行を追加
                 formatted_response = response
                 formatted_response = re.sub(
                     r"\[ツール呼び出し: ([^\]]+)\]",
-                    r"**ツール呼び出し: \1**",
+                    r"\n**ツール呼び出し: \1**\n",
                     formatted_response,
                 )
                 formatted_response = re.sub(
-                    r"結果: ", r"**結果**: ", formatted_response
+                    r"結果: ", r"\n**結果**: ", formatted_response
                 )
 
                 st.markdown(formatted_response)
