@@ -1,0 +1,10 @@
+.vscode
+.env
+.venv
+uv.lock
+.python-version
+
+**/__pycache__
+
+**/test*
+**/*.ipynb
